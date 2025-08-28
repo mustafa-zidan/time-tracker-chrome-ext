@@ -8,70 +8,157 @@
 </head>
 <body>
   <div class="app">
+    <!-- Compact Header -->
     <header class="header">
-      <div class="header-title">
-        <h1>Time Tracker</h1>
-        <span class="version">v2.0</span>
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon">
+          <g>
+            <path d="M16 4 L8 20 L24 20 Z" fill="#ff7000" stroke="#e85d00" stroke-width="1"/>
+            <path d="M16 4 L12 14 L20 14 Z" fill="#ffaa55" opacity="0.8"/>
+            <circle cx="16" cy="13" r="4" fill="#fff" stroke="#ff7000" stroke-width="1.5"/>
+            <line x1="16" y1="13" x2="16" y2="10" stroke="#ff7000" stroke-width="2" stroke-linecap="round"/>
+            <line x1="16" y1="13" x2="18" y2="13" stroke="#ff7000" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="16" cy="9.5" r="0.5" fill="#ff7000"/>
+            <circle cx="19.5" cy="13" r="0.5" fill="#ff7000"/>
+            <circle cx="16" cy="16.5" r="0.5" fill="#ff7000"/>
+            <circle cx="12.5" cy="13" r="0.5" fill="#ff7000"/>
+            <circle cx="16" cy="13" r="1" fill="#ff7000"/>
+            <rect x="7" y="20" width="18" height="2" fill="#ff7000" rx="1"/>
+            <rect x="9" y="22" width="14" height="1" fill="#ffaa55" opacity="0.6" rx="0.5"/>
+          </g>
+        </svg>
+        <span class="app-name">Pharaohs Timer</span>
+      </div>
+      <div class="header-actions">
+        <button id="settings-btn" class="icon-button" title="Settings" aria-label="Open settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="m12 1 1.27 9.45c.28.43.89.69 1.36.49l.96-.41c.46-.2 1-.02 1.2.41l.2.43c.2.43.09 1-.26 1.26l-.96.96c-.35.35-.45.86-.26 1.29L12 20"></path>
+          </svg>
+        </button>
       </div>
     </header>
 
+    <!-- Current Activity Status Card -->
+    <section class="status-section">
+      <div id="current-status" class="status-card inactive">
+        <div class="status-info">
+          <div class="status-indicator">
+            <div class="pulse-dot"></div>
+          </div>
+          <div class="status-text">
+            <span class="status-label">Ready to track</span>
+            <span class="status-activity" id="current-activity-name">Start your first activity</span>
+          </div>
+        </div>
+        <div class="status-duration">
+          <span id="current-duration">00:00</span>
+        </div>
+      </div>
+    </section>
+
     <main class="main">
-      <!-- Activity Input Section -->
-      <section class="activity-input">
-        <div class="input-group">
-          <label for="activity-input" class="sr-only">Activity name</label>
-          <input 
-            type="text" 
-            id="activity-input" 
-            class="activity-field"
-            placeholder="What are you working on?"
-            maxlength="100"
-          >
-          <button id="track-btn" class="track-button start" type="button">
-            <span class="btn-text">Start</span>
-            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="5,3 19,12 5,21"></polygon>
-            </svg>
-          </button>
+      <!-- Quick Action Section -->
+      <section class="quick-action">
+        <div class="input-wrapper">
+          <div class="input-container">
+            <input 
+              type="text" 
+              id="activity-input" 
+              class="activity-input"
+              placeholder="What are you working on?"
+              maxlength="100"
+            >
+            <div class="input-actions">
+              <button id="track-btn" class="action-button start" type="button" aria-label="Start tracking">
+                <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5,3 19,12 5,21"></polygon>
+                </svg>
+                <span class="btn-text">Start</span>
+              </button>
+            </div>
+          </div>
         </div>
         <div id="error-message" class="error-message" role="alert"></div>
       </section>
 
-      <!-- Date Picker Section -->
-      <section class="date-section">
-        <div class="date-picker">
-          <button id="prev-date" class="date-nav" aria-label="Previous day">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <!-- Date Navigation -->
+      <section class="date-nav-section">
+        <div class="date-controls">
+          <button id="prev-date" class="nav-button" aria-label="Previous day">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15,18 9,12 15,6"></polyline>
             </svg>
           </button>
-          <input type="date" id="date-input" class="date-input">
-          <button id="next-date" class="date-nav" aria-label="Next day">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          
+          <div class="date-display">
+            <input type="date" id="date-input" class="date-input">
+            <button id="today-btn" class="today-button">Today</button>
+          </div>
+          
+          <button id="next-date" class="nav-button" aria-label="Next day">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="9,18 15,12 9,6"></polyline>
             </svg>
           </button>
-          <button id="today-btn" class="today-button">Today</button>
         </div>
       </section>
 
-      <!-- Activities List Section -->
-      <section class="activities-section">
-        <div class="activities-header">
-          <h2>Activities</h2>
-          <div class="total-time">
-            Total: <span id="total-duration">0m</span>
+      <!-- Daily Summary -->
+      <section class="summary-section">
+        <div class="summary-card">
+          <div class="summary-item">
+            <div class="summary-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12,6 12,12 16,14"></polyline>
+              </svg>
+            </div>
+            <div class="summary-content">
+              <span class="summary-label">Total Time</span>
+              <span class="summary-value" id="total-duration">0m</span>
+            </div>
           </div>
+          <div class="summary-divider"></div>
+          <div class="summary-item">
+            <div class="summary-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <path d="m9 9 5 12 1.5-2.5L22 14l-2.5-1.5L19 7z"></path>
+              </svg>
+            </div>
+            <div class="summary-content">
+              <span class="summary-label">Activities</span>
+              <span class="summary-value" id="activity-count">0</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Activities List -->
+      <section class="activities-section">
+        <div class="section-header">
+          <h2 class="section-title">Today's Activities</h2>
+          <button id="add-manual-btn" class="text-button" title="Add manual entry" aria-label="Add manual activity">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add
+          </button>
         </div>
         
         <div class="activities-container">
           <div id="activities-list" class="activities-list">
             <div class="empty-state">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12,6 12,12 16,14"></polyline>
-              </svg>
-              <p>No activities for this date</p>
+              <div class="empty-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12,6 12,12 16,14"></polyline>
+                </svg>
+              </div>
+              <p class="empty-title">No activities yet</p>
+              <p class="empty-subtitle">Start tracking to see your activities here</p>
             </div>
           </div>
         </div>
@@ -111,15 +198,16 @@
             </div>
             
             <div class="form-group">
-              <label>
+              <label class="checkbox-label">
                 <input type="checkbox" id="edit-in-progress">
+                <span class="checkmark"></span>
                 Currently in progress
               </label>
             </div>
             
             <div class="form-group">
               <label for="edit-description">Description (optional)</label>
-              <textarea id="edit-description" rows="3" maxlength="500"></textarea>
+              <textarea id="edit-description" rows="3" maxlength="500" placeholder="Add any additional details..."></textarea>
             </div>
             
             <div class="form-actions">
