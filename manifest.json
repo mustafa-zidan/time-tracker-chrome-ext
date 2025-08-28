@@ -1,16 +1,32 @@
 {
+  "manifest_version": 3,
   "name": "Pharaohs Time Tracker",
-  "options_page": "options.html",
-  "permissions": [
-    "notifications"
-  ],
-  "version": "1.7",
+  "version": "2.0.0",
   "description": "Tracks how much time you spend on different projects and tasks",
-  "icons": { "128": "images/icon.png" },
-  "browser_action": {
-    "default_icon": "images/icon.png",
-    "default_title": "Pharaohs Time Tracker",
-    "popup": "popup.html"
+  "icons": {
+    "16": "images/icon.png",
+    "32": "images/icon.png",
+    "48": "images/icon.png",
+    "128": "images/icon.png"
   },
-  "background_page": "background.html"
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Pharaohs Time Tracker",
+    "default_icon": {
+      "16": "images/icon.png",
+      "32": "images/icon.png",
+      "48": "images/icon.png",
+      "128": "images/icon.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "notifications",
+    "alarms"
+  ],
+  "options_page": "options.html",
+  "minimum_chrome_version": "88"
 }
