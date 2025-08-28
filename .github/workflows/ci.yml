@@ -1,0 +1,317 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Upload coverage (Node 18 only)
+        if: matrix.node-version == 18
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Validate build output
+        run: |
+          # Check that essential files exist
+          if [ ! -f "dist/manifest.json" ]; then
+            echo "❌ manifest.json missing from build"
+            exit 1
+          fi
+          
+          if [ ! -f "dist/background.js" ]; then
+            echo "❌ background.js missing from build"
+            exit 1
+          fi
+          
+          if [ ! -f "dist/popup.html" ]; then
+            echo "❌ popup.html missing from build"
+            exit 1
+          fi
+          
+          if [ ! -f "dist/popup.js" ]; then
+            echo "❌ popup.js missing from build"
+            exit 1
+          fi
+          
+          if [ ! -f "dist/options.html" ]; then
+            echo "❌ options.html missing from build"
+            exit 1
+          fi
+          
+          if [ ! -f "dist/options.js" ]; then
+            echo "❌ options.js missing from build"
+            exit 1
+          fi
+          
+          if [ ! -d "dist/images" ]; then
+            echo "❌ images directory missing from build"
+            exit 1
+          fi
+          
+          echo "✅ All essential build files present"
+
+      - name: Check bundle sizes
+        run: |
+          echo "Bundle size analysis:"
+          echo "====================="
+          
+          # Check main bundle sizes
+          if [ -f "dist/background.js" ]; then
+            BACKGROUND_SIZE=$(stat -f%z "dist/background.js" 2>/dev/null || stat -c%s "dist/background.js")
+            echo "Background: ${BACKGROUND_SIZE} bytes"
+          fi
+          
+          if [ -f "dist/popup.js" ]; then
+            POPUP_SIZE=$(stat -f%z "dist/popup.js" 2>/dev/null || stat -c%s "dist/popup.js")
+            echo "Popup: ${POPUP_SIZE} bytes"
+          fi
+          
+          if [ -f "dist/options.js" ]; then
+            OPTIONS_SIZE=$(stat -f%z "dist/options.js" 2>/dev/null || stat -c%s "dist/options.js")
+            echo "Options: ${OPTIONS_SIZE} bytes"
+          fi
+          
+          # Calculate total size
+          TOTAL_SIZE=$(find dist -type f -exec cat {} \; | wc -c)
+          echo "Total: ${TOTAL_SIZE} bytes"
+          
+          # Warn if bundle is getting large (> 1MB)
+          if [ $TOTAL_SIZE -gt 1048576 ]; then
+            echo "⚠️ Warning: Total bundle size exceeds 1MB"
+          fi
+
+  security:
+    name: Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+      - name: Check for sensitive patterns
+        run: |
+          echo "Scanning for sensitive information in source code..."
+          
+          # Check for potential secrets (excluding test files and node_modules)
+          if find src -name "*.ts" -o -name "*.js" -o -name "*.json" | xargs grep -l -i -E "(api[_-]?key|secret|token|password|credential)" --exclude-dir=node_modules; then
+            echo "❌ Potential sensitive information found in source code"
+            exit 1
+          fi
+          
+          echo "✅ No sensitive patterns found"
+
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: |
+          # Check if code is properly formatted
+          npm run format -- --check
+          
+          # If the above fails, show diff
+          if [ $? -ne 0 ]; then
+            echo "Code is not properly formatted. Run 'npm run format' to fix."
+            exit 1
+          fi
+          
+          echo "✅ Code formatting is correct"
+
+  manifest-validation:
+    name: Manifest Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate manifest.json
+        run: |
+          echo "Validating Chrome Extension manifest..."
+          
+          # Check that manifest.json exists and is valid JSON
+          if ! jq empty manifest.json; then
+            echo "❌ manifest.json is not valid JSON"
+            exit 1
+          fi
+          
+          # Check required fields
+          MANIFEST_VERSION=$(jq -r '.manifest_version' manifest.json)
+          if [ "$MANIFEST_VERSION" != "3" ]; then
+            echo "❌ manifest_version must be 3 for modern Chrome extensions"
+            exit 1
+          fi
+          
+          NAME=$(jq -r '.name' manifest.json)
+          if [ "$NAME" == "null" ] || [ -z "$NAME" ]; then
+            echo "❌ manifest.json missing required 'name' field"
+            exit 1
+          fi
+          
+          VERSION=$(jq -r '.version' manifest.json)
+          if [ "$VERSION" == "null" ] || [ -z "$VERSION" ]; then
+            echo "❌ manifest.json missing required 'version' field"
+            exit 1
+          fi
+          
+          # Check version format (should be semantic versioning)
+          if ! echo "$VERSION" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "❌ Version '$VERSION' doesn't follow semantic versioning (x.y.z)"
+            exit 1
+          fi
+          
+          # Check that icons exist
+          ICON_128=$(jq -r '.icons."128"' manifest.json)
+          if [ "$ICON_128" != "null" ] && [ ! -f "$ICON_128" ]; then
+            echo "❌ Icon file $ICON_128 not found"
+            exit 1
+          fi
+          
+          echo "✅ manifest.json validation passed"
+          echo "Extension: $NAME v$VERSION (Manifest V$MANIFEST_VERSION)"
+
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for outdated packages
+        run: |
+          echo "Checking for outdated dependencies..."
+          npm outdated || true  # Don't fail on outdated packages, just inform
+          
+          echo "Checking for unused dependencies..."
+          # This would require additional tooling like depcheck
+          # For now, just log what we have
+          echo "Production dependencies:"
+          jq -r '.dependencies // {} | keys[]' package.json || echo "No production dependencies"
+          
+          echo "Development dependencies:"
+          jq -r '.devDependencies // {} | keys[]' package.json
+
+  all-checks:
+    name: All Checks Complete
+    runs-on: ubuntu-latest
+    needs: [test, build, security, format-check, manifest-validation, dependency-check]
+    if: always()
+    steps:
+      - name: Check all jobs
+        run: |
+          echo "Checking results of all CI jobs..."
+          
+          # Check if any job failed
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "❌ Test suite failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "❌ Build check failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.security.result }}" != "success" ]; then
+            echo "❌ Security check failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.format-check.result }}" != "success" ]; then
+            echo "❌ Format check failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.manifest-validation.result }}" != "success" ]; then
+            echo "❌ Manifest validation failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.dependency-check.result }}" != "success" ]; then
+            echo "❌ Dependency check failed"
+            exit 1
+          fi
+          
+          echo "✅ All CI checks passed successfully!"

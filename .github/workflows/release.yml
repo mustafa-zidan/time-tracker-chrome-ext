@@ -1,0 +1,239 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v2.0.0)'
+        required: true
+        type: string
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+
+  build:
+    name: Build Extension
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Validate manifest
+        run: |
+          if [ ! -f "dist/manifest.json" ]; then
+            echo "manifest.json not found in dist/"
+            exit 1
+          fi
+          echo "Manifest validation passed"
+
+      - name: Create release package
+        run: |
+          cd dist
+          zip -r ../pharaohs-time-tracker-${{ github.ref_name }}.zip .
+          cd ..
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-build
+          path: pharaohs-time-tracker-${{ github.ref_name }}.zip
+          retention-days: 30
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-build
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.ref_name }}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_number=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Extract release notes from CHANGELOG.md for this version
+          VERSION_NUMBER="${{ steps.version.outputs.version_number }}"
+          
+          # Get release notes between this version and the previous one
+          RELEASE_NOTES=$(awk "/^## \[${VERSION_NUMBER}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md | sed '/^$/d' | head -50)
+          
+          if [ -z "$RELEASE_NOTES" ]; then
+            echo "No release notes found for version ${VERSION_NUMBER}"
+            RELEASE_NOTES="Release ${VERSION_NUMBER}
+
+This release includes various improvements and bug fixes. See CHANGELOG.md for full details."
+          fi
+          
+          # Save to file for GitHub release
+          echo "$RELEASE_NOTES" > release_notes.md
+          
+          # Also output for use in next step
+          echo "found_notes=true" >> $GITHUB_OUTPUT
+
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ "$VERSION" =~ -alpha\. ]] || [[ "$VERSION" =~ -beta\. ]] || [[ "$VERSION" =~ -rc\. ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Pharaohs Time Tracker ${{ steps.version.outputs.version }}
+          body_path: release_notes.md
+          files: pharaohs-time-tracker-${{ steps.version.outputs.version }}.zip
+          prerelease: ${{ steps.prerelease.outputs.prerelease }}
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post-release validation
+        run: |
+          echo "Release created successfully for version ${{ steps.version.outputs.version }}"
+          echo "Package: pharaohs-time-tracker-${{ steps.version.outputs.version }}.zip"
+          echo "Pre-release: ${{ steps.prerelease.outputs.prerelease }}"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-build
+
+      - name: Scan build for sensitive information
+        run: |
+          # Unzip and scan the build
+          unzip -q pharaohs-time-tracker-*.zip -d scan_dir
+          
+          # Check for common sensitive patterns
+          echo "Scanning for sensitive information..."
+          
+          # Check for API keys, tokens, etc.
+          if grep -r -i -E "(api[_-]?key|secret|token|password|credential)" scan_dir/ --exclude-dir=node_modules; then
+            echo "WARNING: Potential sensitive information found"
+            exit 1
+          fi
+          
+          # Check for development/debug code
+          if grep -r -i -E "(console\.log|debugger|TODO|FIXME)" scan_dir/ --exclude="*.map"; then
+            echo "WARNING: Development code found in production build"
+            # Don't fail for this, just warn
+          fi
+          
+          echo "Security scan completed successfully"
+
+  notify-completion:
+    name: Notify Release Completion
+    runs-on: ubuntu-latest
+    needs: [create-release, security-scan]
+    if: always()
+    steps:
+      - name: Determine success status
+        id: status
+        run: |
+          if [ "${{ needs.create-release.result }}" == "success" ] && [ "${{ needs.security-scan.result }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=Release completed successfully" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=Release failed - check workflow logs" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Log completion
+        run: |
+          echo "Release workflow completed with status: ${{ steps.status.outputs.status }}"
+          echo "Message: ${{ steps.status.outputs.message }}"
+          
+          if [ "${{ steps.status.outputs.status }}" == "success" ]; then
+            echo "✅ Release is ready for Chrome Web Store deployment"
+            echo "📦 Download the extension package from the GitHub release"
+            echo "📝 Follow the Chrome Web Store deployment guide in docs/release/"
+          else
+            echo "❌ Release failed - manual intervention required"
+          fi
