@@ -3,8 +3,7 @@
  * Handles settings, data management, and statistics
  */
 
-import { db, Activity } from '../shared/database.js';
-import { formatDuration } from '../shared/utils.js';
+import { db, Activity } from '../shared/database';
 
 interface Settings {
   enableNotifications: boolean;
@@ -320,7 +319,7 @@ class OptionsPage {
     }
   }
 
-  private async importActivities(activities: any[]): Promise<void> {
+  private async importActivities(activities: Activity[]): Promise<void> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open('TimeTrackerDB', 1);
       

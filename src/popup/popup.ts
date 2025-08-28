@@ -3,8 +3,8 @@
  * Handles UI interactions and time tracking functionality
  */
 
-import { db, Activity } from '../shared/database.js';
-import { formatTime, formatDuration, getCurrentDuration, sanitizeInput, debounce } from '../shared/utils.js';
+import { db, Activity } from '../shared/database';
+import { formatTime, formatDuration, getCurrentDuration, sanitizeInput, debounce } from '../shared/utils';
 
 class TimeTrackerPopup {
   private currentActivity: Activity | null = null;
@@ -191,7 +191,9 @@ class TimeTrackerPopup {
 
   private updateDateInput(): void {
     const dateStr = this.selectedDate.toISOString().split('T')[0];
-    this.dateInput.value = dateStr;
+    if (dateStr) {
+      this.dateInput.value = dateStr;
+    }
   }
 
   private navigateDate(days: number): void {
@@ -352,7 +354,6 @@ class TimeTrackerPopup {
     e.preventDefault();
     if (!this.editingActivityId) return;
 
-    const formData = new FormData(e.target as HTMLFormElement);
     const activityName = sanitizeInput((document.getElementById('edit-activity') as HTMLInputElement).value);
     const startTimeStr = (document.getElementById('edit-start-time') as HTMLInputElement).value;
     const endTimeStr = (document.getElementById('edit-end-time') as HTMLInputElement).value;
@@ -366,13 +367,17 @@ class TimeTrackerPopup {
 
     try {
       const startTime = new Date(this.selectedDate);
-      const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
+      const startTimeParts = startTimeStr.split(':').map(Number);
+      const startHours = startTimeParts[0] ?? 0;
+      const startMinutes = startTimeParts[1] ?? 0;
       startTime.setHours(startHours, startMinutes, 0, 0);
 
       let endTime: Date | undefined;
       if (!inProgress && endTimeStr) {
         endTime = new Date(this.selectedDate);
-        const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
+        const endTimeParts = endTimeStr.split(':').map(Number);
+        const endHours = endTimeParts[0] ?? 0;
+        const endMinutes = endTimeParts[1] ?? 0;
         endTime.setHours(endHours, endMinutes, 0, 0);
         
         if (endTime <= startTime) {

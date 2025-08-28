@@ -3,8 +3,8 @@
  * Handles background tasks, notifications, and badge updates
  */
 
-import { db, Activity } from '../shared/database.js';
-import { getCurrentDuration } from '../shared/utils.js';
+import { db, Activity } from '../shared/database';
+import { getCurrentDuration } from '../shared/utils';
 
 class BackgroundService {
   private currentActivity: Activity | null = null;
@@ -21,7 +21,7 @@ class BackgroundService {
     }
   }
 
-  private async checkCurrentActivity(): Promise<void> {
+  async checkCurrentActivity(): Promise<void> {
     try {
       this.currentActivity = await db.getCurrentActivity();
       if (this.currentActivity) {
@@ -123,6 +123,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       
     default:
       sendResponse({ success: false, error: 'Unknown message type' });
+      return false;
   }
 });
 

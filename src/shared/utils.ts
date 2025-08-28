@@ -32,8 +32,8 @@ export function parseTimeInput(timeStr: string): Date | null {
   
   if (!match) return null;
   
-  const hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
+  const hours = parseInt(match[1]!, 10);
+  const minutes = parseInt(match[2]!, 10);
   
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
     return null;
@@ -48,6 +48,7 @@ export function isValidTimeFormat(timeStr: string): boolean {
   return parseTimeInput(timeStr) !== null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function debounce<T extends (...args: any[]) => void>(
   func: T,
   wait: number

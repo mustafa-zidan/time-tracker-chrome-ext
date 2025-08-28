@@ -3,10 +3,7 @@
  */
 
 import 'fake-indexeddb/auto';
-import { chrome } from 'jest-chrome';
-
-// Mock Chrome extension APIs
-Object.assign(global, { chrome });
+import 'jest-webextension-mock';
 
 // Mock IndexedDB
 global.indexedDB = require('fake-indexeddb/lib/FDBFactory').default();
@@ -44,7 +41,4 @@ global.console = {
 // Reset mocks before each test
 beforeEach(() => {
   jest.clearAllMocks();
-  chrome.storage.sync.get.mockResolvedValue({});
-  chrome.storage.sync.set.mockResolvedValue();
-  chrome.runtime.sendMessage.mockResolvedValue({ success: true });
 });
