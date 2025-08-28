@@ -25,9 +25,10 @@ body {
 
 /* Header */
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #ff7000 0%, #e85d00 100%);
   color: white;
   padding: 2rem 2rem 3rem;
+  box-shadow: 0 4px 16px rgba(255, 112, 0, 0.2);
 }
 
 .header-content {
@@ -36,16 +37,37 @@ body {
 }
 
 .header-title {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
   margin-bottom: 0.5rem;
 }
 
-.header-title h1 {
+/* Logo Styles */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo-icon {
+  flex-shrink: 0;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.1));
+  transition: transform 0.2s ease;
+}
+
+.logo-icon:hover {
+  transform: scale(1.05);
+}
+
+.header-text {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-text h1 {
   margin: 0;
   font-size: 2rem;
   font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .version {
@@ -53,6 +75,7 @@ body {
   background: rgba(255, 255, 255, 0.2);
   padding: 0.25rem 0.75rem;
   border-radius: 1rem;
+  backdrop-filter: blur(4px);
 }
 
 .header-subtitle {

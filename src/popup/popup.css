@@ -26,9 +26,10 @@ body {
 
 /* Header */
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #ff7000 0%, #e85d00 100%);
   color: white;
   padding: 16px 20px;
+  box-shadow: 0 2px 8px rgba(255, 112, 0, 0.2);
 }
 
 .header-title {
@@ -37,10 +38,34 @@ body {
   justify-content: space-between;
 }
 
-.header-title h1 {
+/* Logo Styles */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transition: transform 0.2s ease;
+}
+
+.logo-icon:hover {
+  transform: scale(1.05);
+}
+
+.header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.header-text h1 {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .version {
@@ -49,6 +74,8 @@ body {
   background: rgba(255, 255, 255, 0.2);
   padding: 2px 8px;
   border-radius: 12px;
+  align-self: flex-start;
+  backdrop-filter: blur(4px);
 }
 
 /* Main Content */
@@ -206,7 +233,8 @@ body {
 }
 
 .today-button:hover {
-  background: #5a67d8;
+  background: #ff7000;
+  color: white;
 }
 
 /* Activities Section */
@@ -490,12 +518,12 @@ body {
 }
 
 .button.primary {
-  background: #667eea;
+  background: #ff7000;
   color: white;
 }
 
 .button.primary:hover {
-  background: #5a67d8;
+  background: #e85d00;
 }
 
 .button.secondary {
