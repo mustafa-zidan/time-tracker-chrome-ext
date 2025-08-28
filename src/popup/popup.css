@@ -5,27 +5,29 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
   padding: 0;
+  width: 400px;
+  min-height: 550px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: #374151;
   background: #f8fafc;
+  overflow-x: hidden;
 }
 
 /* App Container */
 .app {
-  width: 400px;
+  width: 100%;
   min-height: 550px;
   max-height: 700px;
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* Header */
@@ -725,14 +727,8 @@ body {
   color: #374151;
 }
 
-/* Responsive Design */
-@media (max-width: 420px) {
-  .app {
-    width: 100vw;
-    height: 100vh;
-    border-radius: 0;
-  }
-  
+/* Form responsive adjustment */
+@media (max-width: 350px) {
   .form-row {
     grid-template-columns: 1fr;
   }
