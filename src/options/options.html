@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pharaohs Time Tracker - Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header-content">
+        <div class="header-title">
+          <h1>Pharaohs Time Tracker</h1>
+          <span class="version">v2.0</span>
+        </div>
+        <p class="header-subtitle">Manage your time tracking preferences and data</p>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="settings-grid">
+        <!-- Notifications Settings -->
+        <section class="settings-card">
+          <div class="card-header">
+            <h2>Notifications</h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="m13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+          </div>
+          <div class="card-content">
+            <div class="setting-item">
+              <label class="setting-label">
+                <input type="checkbox" id="enableNotifications" class="setting-checkbox">
+                <span class="checkmark"></span>
+                <div class="setting-info">
+                  <span class="setting-title">Enable Notifications</span>
+                  <span class="setting-description">Show notifications when activities are started or stopped</span>
+                </div>
+              </label>
+            </div>
+            
+            <div class="setting-item">
+              <label class="setting-label">
+                <input type="checkbox" id="autoHideNotifications" class="setting-checkbox">
+                <span class="checkmark"></span>
+                <div class="setting-info">
+                  <span class="setting-title">Auto-hide Notifications</span>
+                  <span class="setting-description">Automatically hide notifications after 5 seconds</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Data Management -->
+        <section class="settings-card">
+          <div class="card-header">
+            <h2>Data Management</h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+              <path d="m3 5v14c0 3 4 3 9 3s9 0 9-3V5"></path>
+            </svg>
+          </div>
+          <div class="card-content">
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-title">Export Data</span>
+                <span class="setting-description">Export your time tracking data as JSON or CSV</span>
+              </div>
+              <div class="setting-actions">
+                <button id="exportJson" class="button secondary">Export JSON</button>
+                <button id="exportCsv" class="button secondary">Export CSV</button>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-title">Import Data</span>
+                <span class="setting-description">Import time tracking data from JSON file</span>
+              </div>
+              <div class="setting-actions">
+                <input type="file" id="importFile" accept=".json" style="display: none;">
+                <button id="importBtn" class="button secondary">Import JSON</button>
+              </div>
+            </div>
+
+            <div class="setting-item danger">
+              <div class="setting-info">
+                <span class="setting-title">Clear All Data</span>
+                <span class="setting-description">Permanently delete all time tracking data</span>
+              </div>
+              <div class="setting-actions">
+                <button id="clearData" class="button danger">Clear Data</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Statistics -->
+        <section class="settings-card">
+          <div class="card-header">
+            <h2>Statistics</h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3v18h18"></path>
+              <path d="m19 9l-5 5-4-4-3 3"></path>
+            </svg>
+          </div>
+          <div class="card-content">
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-value" id="totalActivities">-</div>
+                <div class="stat-label">Total Activities</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" id="totalTime">-</div>
+                <div class="stat-label">Total Time Tracked</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" id="avgDaily">-</div>
+                <div class="stat-label">Avg Daily Time</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" id="activeDays">-</div>
+                <div class="stat-label">Active Days</div>
+              </div>
+            </div>
+            <button id="refreshStats" class="button primary">Refresh Statistics</button>
+          </div>
+        </section>
+
+        <!-- About -->
+        <section class="settings-card">
+          <div class="card-header">
+            <h2>About</h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9 9h5l-7 7"></path>
+            </svg>
+          </div>
+          <div class="card-content">
+            <div class="about-info">
+              <div class="about-item">
+                <strong>Version:</strong> 2.0.0
+              </div>
+              <div class="about-item">
+                <strong>Description:</strong> Modern time tracking Chrome extension
+              </div>
+              <div class="about-item">
+                <strong>Authors:</strong> Mustafa Zidan, Mohamed Emad
+              </div>
+              <div class="about-item">
+                <strong>License:</strong> BSD-3-Clause
+              </div>
+            </div>
+            
+            <div class="about-features">
+              <h3>Key Features:</h3>
+              <ul>
+                <li>Start and stop activity tracking with real-time badge updates</li>
+                <li>Browse activities by date with calendar navigation</li>
+                <li>Edit and delete activities with modern interface</li>
+                <li>Duplicate activities by double-clicking</li>
+                <li>Export data in JSON or CSV formats</li>
+                <li>View comprehensive usage statistics</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Status Toast -->
+    <div id="toast" class="toast" role="alert">
+      <div class="toast-content">
+        <span id="toastMessage">Settings saved successfully</span>
+        <button id="toastClose" class="toast-close" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>
