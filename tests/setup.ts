@@ -2,12 +2,9 @@
  * Global test setup for Chrome extension testing
  */
 
-import 'fake-indexeddb/auto';
+// Import fake-indexeddb first - this sets up all the globals automatically
+require('fake-indexeddb/auto');
 import 'jest-webextension-mock';
-
-// Mock IndexedDB
-global.indexedDB = require('fake-indexeddb/lib/FDBFactory').default();
-global.IDBKeyRange = require('fake-indexeddb/lib/FDBKeyRange').default;
 
 // Mock DOM methods that might not be available in jsdom
 Object.defineProperty(window, 'matchMedia', {

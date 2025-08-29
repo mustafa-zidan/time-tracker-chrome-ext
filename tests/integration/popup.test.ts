@@ -76,7 +76,7 @@ describe('Popup Integration Tests', () => {
 
     it('should set up date input with current date', () => {
       const dateInput = document.getElementById('date-input') as HTMLInputElement;
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0]!;
       
       // Simulate popup initialization
       dateInput.value = today;
@@ -136,16 +136,16 @@ describe('Popup Integration Tests', () => {
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
 
-      dateInput.value = today.toISOString().split('T')[0];
+      dateInput.value = today.toISOString().split('T')[0]!;
 
       // Simulate date navigation
       const clickEvent = new MouseEvent('click', { bubbles: true });
       prevBtn.dispatchEvent(clickEvent);
 
       // In real implementation, this would update the date
-      dateInput.value = yesterday.toISOString().split('T')[0];
+      dateInput.value = yesterday.toISOString().split('T')[0]!;
 
-      expect(dateInput.value).toBe(yesterday.toISOString().split('T')[0]);
+      expect(dateInput.value).toBe(yesterday.toISOString().split('T')[0]!);
     });
 
     it('should handle today button', () => {
@@ -155,14 +155,14 @@ describe('Popup Integration Tests', () => {
       // Set to different date first
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      dateInput.value = yesterday.toISOString().split('T')[0];
+      dateInput.value = yesterday.toISOString().split('T')[0]!;
 
       // Simulate today button click
       const clickEvent = new MouseEvent('click', { bubbles: true });
       todayBtn.dispatchEvent(clickEvent);
 
       // Should reset to today
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0]!;
       dateInput.value = today;
 
       expect(dateInput.value).toBe(today);

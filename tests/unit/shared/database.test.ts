@@ -184,8 +184,8 @@ describe('TimeTrackerDB', () => {
       const activities = await db.getActivitiesByDate(date);
 
       expect(activities).toHaveLength(2);
-      expect(activities[0].activity).toBe('Activity 1');
-      expect(activities[1].activity).toBe('Activity 2');
+      expect(activities[0]?.activity).toBe('Activity 1');
+      expect(activities[1]?.activity).toBe('Activity 2');
     });
 
     it('should return empty array for date with no activities', async () => {
@@ -200,8 +200,8 @@ describe('TimeTrackerDB', () => {
       const activities = await db.getActivitiesByDate(date);
 
       expect(activities).toHaveLength(2);
-      expect(new Date(activities[0].start).getTime()).toBeLessThan(
-        new Date(activities[1].start).getTime()
+      expect(new Date(activities[0]?.start || 0).getTime()).toBeLessThan(
+        new Date(activities[1]?.start || 0).getTime()
       );
     });
   });
@@ -270,8 +270,8 @@ describe('TimeTrackerDB', () => {
       const date = new Date('2024-01-01');
       const activities = await db.getActivitiesByDate(date);
       expect(activities).toHaveLength(1);
-      expect(activities[0].end).toBeDefined();
-      expect(activities[0].end).toBeInstanceOf(Date);
+      expect(activities[0]?.end).toBeDefined();
+      expect(activities[0]?.end).toBeInstanceOf(Date);
     });
   });
 });

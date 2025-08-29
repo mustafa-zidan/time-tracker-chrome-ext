@@ -55,24 +55,24 @@ export const setupChromeMocks = () => {
   
   // Default mock implementations
   mockChrome.storage.sync.get.mockResolvedValue({});
-  mockChrome.storage.sync.set.mockResolvedValue();
+  mockChrome.storage.sync.set.mockResolvedValue(undefined);
   mockChrome.runtime.sendMessage.mockResolvedValue({ success: true });
-  mockChrome.action.setBadgeText.mockResolvedValue();
-  mockChrome.action.setBadgeBackgroundColor.mockResolvedValue();
+  mockChrome.action.setBadgeText.mockResolvedValue(undefined);
+  mockChrome.action.setBadgeBackgroundColor.mockResolvedValue(undefined);
   mockChrome.notifications.create.mockResolvedValue('notification-id');
-  mockChrome.notifications.clear.mockResolvedValue();
+  mockChrome.notifications.clear.mockResolvedValue(true);
 };
 
 export const resetChromeMocks = () => {
   Object.values(mockChrome).forEach(api => {
     if (typeof api === 'object') {
       Object.values(api).forEach(method => {
-        if (typeof method === 'function' && method.mockClear) {
-          method.mockClear();
+        if (typeof method === 'function' && 'mockClear' in method) {
+          (method as jest.Mock).mockClear();
         } else if (typeof method === 'object') {
           Object.values(method).forEach(subMethod => {
-            if (typeof subMethod === 'function' && subMethod.mockClear) {
-              subMethod.mockClear();
+            if (typeof subMethod === 'function' && 'mockClear' in subMethod) {
+              (subMethod as jest.Mock).mockClear();
             }
           });
         }

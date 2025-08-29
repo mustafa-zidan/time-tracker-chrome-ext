@@ -38,7 +38,7 @@ describe('Background Service Worker', () => {
 
       // Simulate runtime.onStartup event
       const startupCallback = jest.fn();
-      chrome.runtime.onStartup.addListener.mockImplementation((callback: Function) => {
+      chrome.runtime.onStartup.addListener.mockImplementation((callback: (...args: any[]) => any) => {
         startupCallback.mockImplementation(callback);
       });
 
@@ -53,7 +53,7 @@ describe('Background Service Worker', () => {
 
       // Simulate runtime.onInstalled event
       const installedCallback = jest.fn();
-      chrome.runtime.onInstalled.addListener.mockImplementation((callback: Function) => {
+      chrome.runtime.onInstalled.addListener.mockImplementation((callback: (...args: any[]) => any) => {
         installedCallback.mockImplementation(callback);
       });
 
@@ -151,7 +151,7 @@ describe('Background Service Worker', () => {
             await mockDb.stopCurrentActivity();
             sendResponseCallback({ success: true });
           } catch (error) {
-            sendResponseCallback({ success: false, error: error.message });
+            sendResponseCallback({ success: false, error: (error as Error).message });
           }
         }
         return true; // Keep message channel open
@@ -340,7 +340,7 @@ describe('Background Service Worker', () => {
             await mockDb.stopCurrentActivity();
             sendResponseCallback({ success: true });
           } catch (error) {
-            sendResponseCallback({ success: false, error: error.message });
+            sendResponseCallback({ success: false, error: (error as Error).message });
           }
         }
         return true;

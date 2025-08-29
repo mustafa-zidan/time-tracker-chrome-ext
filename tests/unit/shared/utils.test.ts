@@ -168,8 +168,8 @@ describe('Utility Functions', () => {
     });
 
     it('should handle different dates consistently', () => {
-      const date1 = new Date('2024-12-31T23:59:59Z');
-      const date2 = new Date('2024-01-01T00:00:00Z');
+      const date1 = new Date('2024-12-31T12:00:00'); // Use local time
+      const date2 = new Date('2024-01-01T12:00:00'); // Use local time
       
       expect(createDateKey(date1)).toBe('2024-12-31');
       expect(createDateKey(date2)).toBe('2024-1-1');
