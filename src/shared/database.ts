@@ -50,13 +50,13 @@ export class TimeTrackerDB {
           store.createIndex('activity', 'activity');
           store.createIndex('start', 'start');
         } else {
-          // Get existing store for migrations
+          // Get an existing store for migrations
           store = transaction.objectStore(this.storeName);
         }
         
         if (oldVersion < 2) {
-          // Version 2: Add tags support
-          // Create tags index for filtering
+          // Version 2: Add tag support
+          // Create a tag index for filtering
           if (!store.indexNames.contains('tags')) {
             store.createIndex('tags', 'tags', { multiEntry: true });
           }
