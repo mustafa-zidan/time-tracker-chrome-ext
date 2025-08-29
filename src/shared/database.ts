@@ -7,6 +7,7 @@ export interface Activity {
   id?: number;
   activity: string;
   description?: string;
+  tags?: string[];
   start: Date;
   end?: Date;
   day: number;
@@ -17,7 +18,7 @@ export interface Activity {
 export class TimeTrackerDB {
   private db: IDBDatabase | null = null;
   private readonly dbName = 'TimeTrackerDB';
-  private readonly version = 1;
+  private readonly version = 2;
   private readonly storeName = 'activities';
 
   async init(): Promise<void> {
@@ -32,9 +33,14 @@ export class TimeTrackerDB {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const transaction = (event.target as IDBOpenDBRequest).transaction!;
+        const oldVersion = event.oldVersion;
         
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          const store = db.createObjectStore(this.storeName, { 
+        let store: IDBObjectStore;
+        
+        if (oldVersion < 1) {
+          // Initial database creation
+          store = db.createObjectStore(this.storeName, { 
             keyPath: 'id', 
             autoIncrement: true 
           });
@@ -43,6 +49,30 @@ export class TimeTrackerDB {
           store.createIndex('date', ['year', 'month', 'day']);
           store.createIndex('activity', 'activity');
           store.createIndex('start', 'start');
+        } else {
+          // Get existing store for migrations
+          store = transaction.objectStore(this.storeName);
+        }
+        
+        if (oldVersion < 2) {
+          // Version 2: Add tags support
+          // Create tags index for filtering
+          if (!store.indexNames.contains('tags')) {
+            store.createIndex('tags', 'tags', { multiEntry: true });
+          }
+          
+          // Migration: Add empty tags array to existing activities
+          store.openCursor().onsuccess = (event) => {
+            const cursor = (event.target as IDBRequest).result as IDBCursorWithValue;
+            if (cursor) {
+              const activity = cursor.value;
+              if (!activity.tags) {
+                activity.tags = [];
+                cursor.update(activity);
+              }
+              cursor.continue();
+            }
+          };
         }
       };
     });
@@ -149,6 +179,61 @@ export class TimeTrackerDB {
         end: new Date() 
       });
     }
+  }
+
+  async getActivitiesByDateAndTags(date: Date, tags: string[] = []): Promise<Activity[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.storeName], 'readonly');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        let activities = request.result.filter((activity: Activity) => {
+          const activityDate = new Date(activity.start);
+          return activityDate.getFullYear() === date.getFullYear() &&
+                 activityDate.getMonth() === date.getMonth() &&
+                 activityDate.getDate() === date.getDate();
+        });
+
+        // Filter by tags if provided
+        if (tags.length > 0) {
+          activities = activities.filter((activity: Activity) =>
+            tags.every(tag => activity.tags && activity.tags.includes(tag))
+          );
+        }
+
+        activities.sort((a, b) => 
+          new Date(a.start).getTime() - new Date(b.start).getTime()
+        );
+        
+        resolve(activities);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getAllTags(): Promise<string[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.storeName], 'readonly');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const allTags = new Set<string>();
+        request.result.forEach((activity: Activity) => {
+          if (activity.tags) {
+            activity.tags.forEach(tag => allTags.add(tag));
+          }
+        });
+        
+        resolve(Array.from(allTags).sort());
+      };
+      request.onerror = () => reject(request.error);
+    });
   }
 }
 

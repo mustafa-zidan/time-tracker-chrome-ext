@@ -134,6 +134,24 @@
         </div>
       </section>
 
+      <!-- Tag Filter Section -->
+      <section class="tag-filter-section">
+        <div class="filter-controls">
+          <div class="filter-input-group">
+            <label for="tag-filter" class="filter-label">Filter by tags:</label>
+            <select id="tag-filter" class="tag-filter-select">
+              <option value="">All activities</option>
+            </select>
+            <button id="clear-tag-filter" class="clear-filter-btn" title="Clear filter">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
       <!-- Activities List -->
       <section class="activities-section">
         <div class="section-header">
@@ -183,6 +201,12 @@
             <div class="form-group">
               <label for="edit-activity">Activity</label>
               <input type="text" id="edit-activity" required maxlength="100">
+            </div>
+            
+            <div class="form-group">
+              <label for="edit-tags">Tags (comma-separated)</label>
+              <input type="text" id="edit-tags" placeholder="work, project, meeting..." maxlength="200">
+              <div id="tag-suggestions" class="tag-suggestions"></div>
             </div>
             
             <div class="form-row">

@@ -11,6 +11,8 @@ class TimeTrackerPopup {
   private selectedDate: Date = new Date();
   private activities: Activity[] = [];
   private editingActivityId: number | null = null;
+  private selectedTags: string[] = [];
+  private allTags: string[] = [];
 
   // DOM elements
   private activityInput!: HTMLInputElement;
@@ -21,6 +23,8 @@ class TimeTrackerPopup {
   private activityCount!: HTMLElement;
   private errorMessage!: HTMLElement;
   private editModal!: HTMLElement;
+  private tagFilterSelect!: HTMLSelectElement;
+  private clearTagFilterBtn!: HTMLButtonElement;
 
   async init(): Promise<void> {
     try {
@@ -28,6 +32,7 @@ class TimeTrackerPopup {
       this.bindElements();
       this.bindEvents();
       await this.loadCurrentActivity();
+      await this.loadTags();
       await this.loadActivities();
       this.updateDateInput();
       console.log('Popup initialized successfully');
@@ -46,6 +51,8 @@ class TimeTrackerPopup {
     this.activityCount = document.getElementById('activity-count') as HTMLElement;
     this.errorMessage = document.getElementById('error-message') as HTMLElement;
     this.editModal = document.getElementById('edit-modal') as HTMLElement;
+    this.tagFilterSelect = document.getElementById('tag-filter') as HTMLSelectElement;
+    this.clearTagFilterBtn = document.getElementById('clear-tag-filter') as HTMLButtonElement;
   }
 
   private bindEvents(): void {
@@ -71,6 +78,10 @@ class TimeTrackerPopup {
 
     // Settings button
     document.getElementById('settings-btn')?.addEventListener('click', () => this.openOptionsPage());
+
+    // Tag filter events
+    this.tagFilterSelect.addEventListener('change', () => this.handleTagFilterChange());
+    this.clearTagFilterBtn.addEventListener('click', () => this.clearTagFilter());
 
     // Modal events
     this.bindModalEvents();
@@ -226,9 +237,22 @@ class TimeTrackerPopup {
     }
   }
 
+  private async loadTags(): Promise<void> {
+    try {
+      this.allTags = await db.getAllTags();
+      this.updateTagFilter();
+    } catch (error) {
+      console.error('Error loading tags:', error);
+    }
+  }
+
   private async loadActivities(): Promise<void> {
     try {
-      this.activities = await db.getActivitiesByDate(this.selectedDate);
+      if (this.selectedTags.length > 0) {
+        this.activities = await db.getActivitiesByDateAndTags(this.selectedDate, this.selectedTags);
+      } else {
+        this.activities = await db.getActivitiesByDate(this.selectedDate);
+      }
       this.renderActivities();
       this.updateTotalDuration();
     } catch (error) {
@@ -259,6 +283,12 @@ class TimeTrackerPopup {
         ? formatDuration(new Date(activity.start), new Date(activity.end))
         : getCurrentDuration(new Date(activity.start));
 
+      const tagsHTML = activity.tags && activity.tags.length > 0
+        ? `<div class="activity-tags">
+             ${activity.tags.map(tag => `<span class="tag-badge">${this.escapeHtml(tag)}</span>`).join('')}
+           </div>`
+        : '';
+
       return `
         <div class="activity-item ${isActive ? 'active' : ''}" data-id="${activity.id}">
           <div class="activity-info">
@@ -266,6 +296,7 @@ class TimeTrackerPopup {
             <div class="activity-time">
               <span>${startTime} - ${endTime}</span>
             </div>
+            ${tagsHTML}
           </div>
           <div class="activity-duration">${duration}</div>
           <div class="activity-actions">
@@ -344,6 +375,7 @@ class TimeTrackerPopup {
     const endTimeInput = document.getElementById('edit-end-time') as HTMLInputElement;
     const inProgressCheckbox = document.getElementById('edit-in-progress') as HTMLInputElement;
     const descriptionInput = document.getElementById('edit-description') as HTMLTextAreaElement;
+    const tagsInput = document.getElementById('edit-tags') as HTMLInputElement;
     
     if (activity.end) {
       endTimeInput.value = formatTime(new Date(activity.end));
@@ -356,6 +388,7 @@ class TimeTrackerPopup {
     }
     
     descriptionInput.value = activity.description || '';
+    tagsInput.value = activity.tags ? activity.tags.join(', ') : '';
     
     (document.getElementById('modal-title') as HTMLElement).textContent = 'Edit Activity';
   }
@@ -368,6 +401,8 @@ class TimeTrackerPopup {
     const endTimeStr = (document.getElementById('edit-end-time') as HTMLInputElement).value;
     const inProgress = (document.getElementById('edit-in-progress') as HTMLInputElement).checked;
     const description = sanitizeInput((document.getElementById('edit-description') as HTMLTextAreaElement).value);
+    const tagsStr = sanitizeInput((document.getElementById('edit-tags') as HTMLInputElement).value);
+    const tags = tagsStr.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
 
     if (!activityName.trim()) {
       this.showError('Activity name is required');
@@ -401,7 +436,8 @@ class TimeTrackerPopup {
           activity: activityName,
           start: startTime,
           end: endTime,
-          description: description || undefined
+          description: description || undefined,
+          tags: tags.length > 0 ? tags : undefined
         });
       } else {
         // Add new activity
@@ -410,6 +446,7 @@ class TimeTrackerPopup {
           start: startTime,
           end: endTime,
           description: description || undefined,
+          tags: tags.length > 0 ? tags : undefined,
           day: this.selectedDate.getDate(),
           month: this.selectedDate.getMonth() + 1,
           year: this.selectedDate.getFullYear()
@@ -418,6 +455,7 @@ class TimeTrackerPopup {
       }
 
       this.closeModal();
+      await this.loadTags(); // Refresh tags in case new ones were added
       await this.loadActivities();
       await this.loadCurrentActivity(); // In case we edited the current activity
       
@@ -517,17 +555,54 @@ class TimeTrackerPopup {
     const endTimeInput = document.getElementById('edit-end-time') as HTMLInputElement;
     const inProgressCheckbox = document.getElementById('edit-in-progress') as HTMLInputElement;
     const descriptionInput = document.getElementById('edit-description') as HTMLTextAreaElement;
+    const tagsInput = document.getElementById('edit-tags') as HTMLInputElement;
     
     endTimeInput.value = '';
     inProgressCheckbox.checked = false;
     endTimeInput.disabled = false;
     descriptionInput.value = '';
+    tagsInput.value = '';
     
     (document.getElementById('modal-title') as HTMLElement).textContent = 'Add Activity';
   }
 
   private openOptionsPage(): void {
     chrome.tabs.create({ url: chrome.runtime.getURL('options.html') });
+  }
+
+  private updateTagFilter(): void {
+    // Clear existing options except the default one
+    this.tagFilterSelect.innerHTML = '<option value="">All activities</option>';
+    
+    // Add tag options
+    this.allTags.forEach(tag => {
+      const option = document.createElement('option');
+      option.value = tag;
+      option.textContent = tag;
+      this.tagFilterSelect.appendChild(option);
+    });
+
+    // Update clear button state
+    this.clearTagFilterBtn.disabled = this.selectedTags.length === 0;
+  }
+
+  private handleTagFilterChange(): void {
+    const selectedTag = this.tagFilterSelect.value;
+    if (selectedTag) {
+      this.selectedTags = [selectedTag];
+    } else {
+      this.selectedTags = [];
+    }
+    
+    this.clearTagFilterBtn.disabled = this.selectedTags.length === 0;
+    this.loadActivities();
+  }
+
+  private clearTagFilter(): void {
+    this.selectedTags = [];
+    this.tagFilterSelect.value = '';
+    this.clearTagFilterBtn.disabled = true;
+    this.loadActivities();
   }
 }
 
