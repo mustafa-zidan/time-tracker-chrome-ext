@@ -98,14 +98,48 @@
             </svg>
           </div>
           <div class="card-content">
-            <div class="setting-item">
+            <div class="setting-item export-section">
               <div class="setting-info">
                 <span class="setting-title">Export Data</span>
-                <span class="setting-description">Export your time tracking data as JSON or CSV</span>
+                <span class="setting-description">Export your time tracking data with customizable filters</span>
               </div>
+              
+              <!-- Export Filters -->
+              <div class="export-filters">
+                <div class="filter-row">
+                  <div class="filter-group">
+                    <label for="exportStartDate" class="filter-label">From:</label>
+                    <input type="date" id="exportStartDate" class="filter-input">
+                  </div>
+                  <div class="filter-group">
+                    <label for="exportEndDate" class="filter-label">To:</label>
+                    <input type="date" id="exportEndDate" class="filter-input">
+                  </div>
+                  <div class="filter-group">
+                    <label for="exportTagFilter" class="filter-label">Tags:</label>
+                    <select id="exportTagFilter" class="filter-select">
+                      <option value="">All tags</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="filter-row">
+                  <div class="filter-group">
+                    <label class="filter-checkbox">
+                      <input type="checkbox" id="exportIncludeStats">
+                      <span class="checkmark-small"></span>
+                      Include summary statistics
+                    </label>
+                  </div>
+                  <button id="exportPreset7Days" class="preset-button">Last 7 days</button>
+                  <button id="exportPreset30Days" class="preset-button">Last 30 days</button>
+                  <button id="exportPresetAll" class="preset-button">All time</button>
+                </div>
+              </div>
+              
               <div class="setting-actions">
                 <button id="exportJson" class="button secondary">Export JSON</button>
                 <button id="exportCsv" class="button secondary">Export CSV</button>
+                <button id="exportPdf" class="button secondary">Export PDF</button>
               </div>
             </div>
 

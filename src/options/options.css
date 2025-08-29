@@ -378,6 +378,127 @@ body {
   color: #374151;
 }
 
+/* Export Filters */
+.export-section {
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.export-filters {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: fit-content;
+}
+
+.filter-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.filter-input,
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #374151;
+  outline: none;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  border-color: #ff7000;
+  box-shadow: 0 0 0 3px rgba(255, 112, 0, 0.1);
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.filter-checkbox input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.filter-checkbox input[type="checkbox"]:checked + .checkmark-small {
+  background: #ff7000;
+  border-color: #ff7000;
+}
+
+.filter-checkbox input[type="checkbox"]:checked + .checkmark-small::after {
+  content: '✓';
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.preset-button {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.preset-button:hover {
+  background: #ff7000;
+  border-color: #ff7000;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.preset-button:active {
+  transform: translateY(0);
+}
+
 /* Loading State */
 .loading {
   opacity: 0.6;
@@ -415,6 +536,22 @@ body {
   .setting-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+  
+  .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .filter-group {
+    justify-content: space-between;
+  }
+  
+  .filter-input,
+  .filter-select {
+    min-width: auto;
+    flex: 1;
   }
   
   .toast {
