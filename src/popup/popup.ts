@@ -18,6 +18,7 @@ class TimeTrackerPopup {
   private dateInput!: HTMLInputElement;
   private activitiesList!: HTMLElement;
   private totalDuration!: HTMLElement;
+  private activityCount!: HTMLElement;
   private errorMessage!: HTMLElement;
   private editModal!: HTMLElement;
 
@@ -42,6 +43,7 @@ class TimeTrackerPopup {
     this.dateInput = document.getElementById('date-input') as HTMLInputElement;
     this.activitiesList = document.getElementById('activities-list') as HTMLElement;
     this.totalDuration = document.getElementById('total-duration') as HTMLElement;
+    this.activityCount = document.getElementById('activity-count') as HTMLElement;
     this.errorMessage = document.getElementById('error-message') as HTMLElement;
     this.editModal = document.getElementById('edit-modal') as HTMLElement;
   }
@@ -63,6 +65,12 @@ class TimeTrackerPopup {
     document.getElementById('next-date')?.addEventListener('click', () => this.navigateDate(1));
     document.getElementById('today-btn')?.addEventListener('click', () => this.goToToday());
     this.dateInput.addEventListener('change', () => this.handleDateChange());
+
+    // Add manual activity button
+    document.getElementById('add-manual-btn')?.addEventListener('click', () => this.showAddActivityModal());
+
+    // Settings button
+    document.getElementById('settings-btn')?.addEventListener('click', () => this.openOptionsPage());
 
     // Modal events
     this.bindModalEvents();
@@ -101,22 +109,22 @@ class TimeTrackerPopup {
 
   private updateTrackButton(): void {
     if (this.currentActivity) {
-      this.trackBtn.className = 'track-button stop';
+      this.trackBtn.className = 'action-button stop';
       this.trackBtn.innerHTML = `
-        <span class="btn-text">Stop</span>
-        <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="6" y="6" width="12" height="12"></rect>
         </svg>
+        <span class="btn-text">Stop</span>
       `;
       this.activityInput.value = this.currentActivity.activity;
       this.activityInput.disabled = true;
     } else {
-      this.trackBtn.className = 'track-button start';
+      this.trackBtn.className = 'action-button start';
       this.trackBtn.innerHTML = `
-        <span class="btn-text">Start</span>
-        <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polygon points="5,3 19,12 5,21"></polygon>
         </svg>
+        <span class="btn-text">Start</span>
       `;
       this.activityInput.disabled = false;
     }
@@ -348,11 +356,12 @@ class TimeTrackerPopup {
     }
     
     descriptionInput.value = activity.description || '';
+    
+    (document.getElementById('modal-title') as HTMLElement).textContent = 'Edit Activity';
   }
 
   private async handleEditSubmit(e: Event): Promise<void> {
     e.preventDefault();
-    if (!this.editingActivityId) return;
 
     const activityName = sanitizeInput((document.getElementById('edit-activity') as HTMLInputElement).value);
     const startTimeStr = (document.getElementById('edit-start-time') as HTMLInputElement).value;
@@ -386,12 +395,27 @@ class TimeTrackerPopup {
         }
       }
 
-      await db.updateActivity(this.editingActivityId, {
-        activity: activityName,
-        start: startTime,
-        end: endTime,
-        description: description || undefined
-      });
+      if (this.editingActivityId) {
+        // Update existing activity
+        await db.updateActivity(this.editingActivityId, {
+          activity: activityName,
+          start: startTime,
+          end: endTime,
+          description: description || undefined
+        });
+      } else {
+        // Add new activity
+        const newActivity: Omit<Activity, 'id'> = {
+          activity: activityName,
+          start: startTime,
+          end: endTime,
+          description: description || undefined,
+          day: this.selectedDate.getDate(),
+          month: this.selectedDate.getMonth() + 1,
+          year: this.selectedDate.getFullYear()
+        };
+        await db.addActivity(newActivity);
+      }
 
       this.closeModal();
       await this.loadActivities();
@@ -437,6 +461,7 @@ class TimeTrackerPopup {
     }
     
     this.totalDuration.textContent = durationText;
+    this.activityCount.textContent = this.activities.length.toString();
   }
 
   private openModal(): void {
@@ -460,17 +485,49 @@ class TimeTrackerPopup {
 
   private showError(message: string): void {
     this.errorMessage.textContent = message;
+    this.errorMessage.classList.add('show');
     setTimeout(() => this.clearError(), 5000);
   }
 
   private clearError(): void {
     this.errorMessage.textContent = '';
+    this.errorMessage.classList.remove('show');
   }
 
   private escapeHtml(text: string): string {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  private showAddActivityModal(): void {
+    this.editingActivityId = null;
+    this.populateEditModalForNewActivity();
+    this.openModal();
+  }
+
+  private populateEditModalForNewActivity(): void {
+    (document.getElementById('edit-activity') as HTMLInputElement).value = '';
+    
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5);
+    
+    (document.getElementById('edit-start-time') as HTMLInputElement).value = currentTime;
+    
+    const endTimeInput = document.getElementById('edit-end-time') as HTMLInputElement;
+    const inProgressCheckbox = document.getElementById('edit-in-progress') as HTMLInputElement;
+    const descriptionInput = document.getElementById('edit-description') as HTMLTextAreaElement;
+    
+    endTimeInput.value = '';
+    inProgressCheckbox.checked = false;
+    endTimeInput.disabled = false;
+    descriptionInput.value = '';
+    
+    (document.getElementById('modal-title') as HTMLElement).textContent = 'Add Activity';
+  }
+
+  private openOptionsPage(): void {
+    chrome.tabs.create({ url: chrome.runtime.getURL('options.html') });
   }
 }
 

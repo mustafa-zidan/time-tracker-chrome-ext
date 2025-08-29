@@ -542,7 +542,7 @@ body {
   justify-content: center;
 }
 
-.modal.show {
+.modal.active {
   display: flex;
 }
 

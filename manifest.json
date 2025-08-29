@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Pharaohs Time Tracker",
+  "name": "ChronoFlow",
   "version": "2.0.0",
-  "description": "Tracks how much time you spend on different projects and tasks",
+  "description": "Effortless time tracking and productivity insights",
   "icons": {
     "16": "images/icon.png",
     "32": "images/icon.png",
@@ -11,7 +11,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Pharaohs Time Tracker",
+    "default_title": "ChronoFlow",
     "default_icon": {
       "16": "images/icon.png",
       "32": "images/icon.png",
