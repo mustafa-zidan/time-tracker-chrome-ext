@@ -42,5 +42,9 @@
     "productivity"
   ],
   "author": "Mustafa Zidan <mustafa.zidan@gmail.com>, Mohamed Emad <emadhegab@gmail.com>",
-  "license": "BSD-3-Clause"
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "@types/chart.js": "^2.9.41",
+    "chart.js": "^4.5.0"
+  }
 }

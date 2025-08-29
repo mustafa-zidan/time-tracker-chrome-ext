@@ -1,9 +1,36 @@
 /**
  * Modern options page for Chrome Extension
- * Handles settings, data management, and statistics
+ * Handles settings, data management, and enhanced analytics dashboard
  */
 
 import { db, Activity } from '../shared/database';
+import {
+  Chart,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Filler
+} from 'chart.js';
+
+// Register Chart.js components
+Chart.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Filler
+);
 
 interface Settings {
   enableNotifications: boolean;
@@ -15,6 +42,27 @@ interface Statistics {
   totalTimeMinutes: number;
   avgDailyMinutes: number;
   activeDays: number;
+  topActivity: string;
+  topActivityTime: number;
+  productivityScore: number;
+  trends: {
+    activitiesChange: number;
+    timeChange: number;
+    dailyChange: number;
+    daysChange: number;
+  };
+}
+
+interface AnalyticsData {
+  dailyTime: { date: string; minutes: number }[];
+  activityDistribution: { activity: string; minutes: number }[];
+  weeklyHeatmap: { week: number; day: number; minutes: number }[];
+  topTags: { tag: string; minutes: number }[];
+}
+
+interface ProductivityInsight {
+  type: 'positive' | 'warning' | 'info';
+  text: string;
 }
 
 interface ExportFilters {
@@ -45,6 +93,8 @@ class OptionsPage {
   private exportFilters: ExportFilters = {
     includeStats: false
   };
+  private analyticsTimeRange: number = 30;
+  private charts: { [key: string]: Chart } = {};
 
   async init(): Promise<void> {
     try {
@@ -53,7 +103,7 @@ class OptionsPage {
       await this.loadAvailableTags();
       this.bindEvents();
       this.initializeExportFilters();
-      await this.loadStatistics();
+      await this.loadEnhancedAnalytics();
       console.log('Options page initialized');
     } catch (error) {
       console.error('Failed to initialize options page:', error);
@@ -85,8 +135,9 @@ class OptionsPage {
     document.getElementById('importFile')?.addEventListener('change', (e) => this.importData(e));
     document.getElementById('clearData')?.addEventListener('click', () => this.clearAllData());
 
-    // Statistics
-    document.getElementById('refreshStats')?.addEventListener('click', () => this.loadStatistics());
+    // Enhanced Analytics
+    document.getElementById('refreshAnalytics')?.addEventListener('click', () => this.loadEnhancedAnalytics());
+    document.getElementById('analyticsTimeRange')?.addEventListener('change', () => this.onTimeRangeChange());
 
     // Toast close
     document.getElementById('toastClose')?.addEventListener('click', () => this.hideToast());
@@ -134,94 +185,238 @@ class OptionsPage {
     }
   }
 
-  private async loadStatistics(): Promise<void> {
-    const refreshBtn = document.getElementById('refreshStats') as HTMLButtonElement;
+  private async loadEnhancedAnalytics(): Promise<void> {
+    const refreshBtn = document.getElementById('refreshAnalytics') as HTMLButtonElement;
     
     try {
       refreshBtn.disabled = true;
       refreshBtn.textContent = 'Loading...';
 
-      const stats = await this.calculateStatistics();
+      const stats = await this.calculateEnhancedStatistics();
+      const analyticsData = await this.generateAnalyticsData();
+      
       this.updateStatisticsUI(stats);
+      this.renderCharts(analyticsData);
+      this.generateProductivityInsights(stats, analyticsData);
     } catch (error) {
-      console.error('Error loading statistics:', error);
-      this.showToast('Failed to load statistics', 'error');
+      console.error('Error loading analytics:', error);
+      this.showToast('Failed to load analytics', 'error');
     } finally {
       refreshBtn.disabled = false;
-      refreshBtn.textContent = 'Refresh Statistics';
+      refreshBtn.textContent = 'Refresh Analytics';
     }
   }
 
-  private async calculateStatistics(): Promise<Statistics> {
-    return new Promise((resolve, reject) => {
-      const transaction = indexedDB.open('TimeTrackerDB', 1);
+  private onTimeRangeChange(): void {
+    const timeRangeSelect = document.getElementById('analyticsTimeRange') as HTMLSelectElement;
+    this.analyticsTimeRange = parseInt(timeRangeSelect.value);
+    this.loadEnhancedAnalytics();
+  }
+
+  private async calculateEnhancedStatistics(): Promise<Statistics> {
+    const activities = await this.getActivitiesForTimeRange();
+    const allActivities = await this.getAllActivities();
+    
+    // Calculate current period stats
+    const currentStats = this.calculateStatsForActivities(activities);
+    
+    // Calculate previous period for trends (same duration, but shifted back)
+    const periodDays = this.analyticsTimeRange || 365;
+    const previousStartDate = new Date();
+    previousStartDate.setDate(previousStartDate.getDate() - (periodDays * 2));
+    const previousEndDate = new Date();
+    previousEndDate.setDate(previousEndDate.getDate() - periodDays);
+    
+    const previousActivities = allActivities.filter(activity => {
+      const activityDate = new Date(activity.start);
+      return activityDate >= previousStartDate && activityDate < previousEndDate;
+    });
+    
+    const previousStats = this.calculateStatsForActivities(previousActivities);
+    
+    // Calculate trends
+    const trends = {
+      activitiesChange: this.calculatePercentageChange(previousStats.totalActivities, currentStats.totalActivities),
+      timeChange: this.calculatePercentageChange(previousStats.totalTimeMinutes, currentStats.totalTimeMinutes),
+      dailyChange: this.calculatePercentageChange(previousStats.avgDailyMinutes, currentStats.avgDailyMinutes),
+      daysChange: this.calculatePercentageChange(previousStats.activeDays, currentStats.activeDays)
+    };
+    
+    // Find top activity
+    const activityTimes = new Map<string, number>();
+    activities.forEach(activity => {
+      const startTime = new Date(activity.start);
+      const endTime = activity.end ? new Date(activity.end) : new Date();
+      const durationMs = endTime.getTime() - startTime.getTime();
+      const durationMinutes = Math.floor(durationMs / (1000 * 60));
       
-      transaction.onsuccess = () => {
-        const db = transaction.result;
-        const objectStore = db.transaction(['activities']).objectStore('activities');
-        const request = objectStore.getAll();
+      const current = activityTimes.get(activity.activity) || 0;
+      activityTimes.set(activity.activity, current + durationMinutes);
+    });
+    
+    const topActivityEntry = Array.from(activityTimes.entries())
+      .sort(([,a], [,b]) => b - a)[0];
+    
+    const topActivity = topActivityEntry ? topActivityEntry[0] : 'No activities';
+    const topActivityTime = topActivityEntry ? topActivityEntry[1] : 0;
+    
+    // Calculate productivity score (0-100)
+    const productivityScore = this.calculateProductivityScore(activities);
+    
+    return {
+      ...currentStats,
+      topActivity,
+      topActivityTime,
+      productivityScore,
+      trends
+    };
+  }
 
-        request.onsuccess = () => {
-          const activities: Activity[] = request.result;
-          
-          let totalTimeMinutes = 0;
-          const activeDaysSet = new Set<string>();
+  private calculateStatsForActivities(activities: Activity[]) {
+    let totalTimeMinutes = 0;
+    const activeDaysSet = new Set<string>();
 
-          activities.forEach(activity => {
-            // Calculate duration
-            const startTime = new Date(activity.start);
-            const endTime = activity.end ? new Date(activity.end) : new Date();
-            const durationMs = endTime.getTime() - startTime.getTime();
-            totalTimeMinutes += Math.floor(durationMs / (1000 * 60));
+    activities.forEach(activity => {
+      const startTime = new Date(activity.start);
+      const endTime = activity.end ? new Date(activity.end) : new Date();
+      const durationMs = endTime.getTime() - startTime.getTime();
+      totalTimeMinutes += Math.floor(durationMs / (1000 * 60));
 
-            // Track active days
-            const dateKey = `${activity.year}-${activity.month}-${activity.day}`;
-            activeDaysSet.add(dateKey);
-          });
+      const dateKey = `${activity.year}-${activity.month}-${activity.day}`;
+      activeDaysSet.add(dateKey);
+    });
 
-          const activeDays = activeDaysSet.size;
-          const avgDailyMinutes = activeDays > 0 ? Math.round(totalTimeMinutes / activeDays) : 0;
+    const activeDays = activeDaysSet.size;
+    const avgDailyMinutes = activeDays > 0 ? Math.round(totalTimeMinutes / activeDays) : 0;
 
-          resolve({
-            totalActivities: activities.length,
-            totalTimeMinutes,
-            avgDailyMinutes,
-            activeDays
-          });
-        };
+    return {
+      totalActivities: activities.length,
+      totalTimeMinutes,
+      avgDailyMinutes,
+      activeDays
+    };
+  }
 
-        request.onerror = () => reject(request.error);
-      };
+  private calculatePercentageChange(oldValue: number, newValue: number): number {
+    if (oldValue === 0) return newValue > 0 ? 100 : 0;
+    return Math.round(((newValue - oldValue) / oldValue) * 100);
+  }
 
-      transaction.onerror = () => reject(transaction.error);
+  private calculateProductivityScore(activities: Activity[]): number {
+    if (activities.length === 0) return 0;
+    
+    let score = 0;
+    let factors = 0;
+    
+    // Factor 1: Consistency (daily activity)
+    const days = this.analyticsTimeRange || 30;
+    const activeDays = new Set(activities.map(a => `${a.year}-${a.month}-${a.day}`)).size;
+    const consistencyScore = Math.min((activeDays / days) * 100, 100);
+    score += consistencyScore * 0.3;
+    factors += 0.3;
+    
+    // Factor 2: Average session length (optimal around 25-90 minutes)
+    const totalMinutes = activities.reduce((sum, activity) => {
+      const startTime = new Date(activity.start);
+      const endTime = activity.end ? new Date(activity.end) : new Date();
+      return sum + Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+    }, 0);
+    
+    const avgSessionLength = totalMinutes / activities.length;
+    let sessionScore = 0;
+    if (avgSessionLength >= 25 && avgSessionLength <= 90) {
+      sessionScore = 100;
+    } else if (avgSessionLength > 90) {
+      sessionScore = Math.max(50, 100 - ((avgSessionLength - 90) / 2));
+    } else {
+      sessionScore = (avgSessionLength / 25) * 100;
+    }
+    score += sessionScore * 0.3;
+    factors += 0.3;
+    
+    // Factor 3: Tag usage (organization)
+    const taggedActivities = activities.filter(a => a.tags && a.tags.length > 0).length;
+    const organizationScore = (taggedActivities / activities.length) * 100;
+    score += organizationScore * 0.2;
+    factors += 0.2;
+    
+    // Factor 4: Activity variety
+    const uniqueActivities = new Set(activities.map(a => a.activity)).size;
+    const varietyScore = Math.min((uniqueActivities / 10) * 100, 100);
+    score += varietyScore * 0.2;
+    factors += 0.2;
+    
+    return Math.round(score / factors);
+  }
+
+  private async getActivitiesForTimeRange(): Promise<Activity[]> {
+    const activities = await this.getAllActivities();
+    
+    if (this.analyticsTimeRange === 0) {
+      return activities;
+    }
+    
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - this.analyticsTimeRange);
+    
+    return activities.filter(activity => {
+      const activityDate = new Date(activity.start);
+      return activityDate >= cutoffDate;
     });
   }
 
   private updateStatisticsUI(stats: Statistics): void {
-    const totalActivitiesEl = document.getElementById('totalActivities');
-    const totalTimeEl = document.getElementById('totalTime');
-    const avgDailyEl = document.getElementById('avgDaily');
-    const activeDaysEl = document.getElementById('activeDays');
-
-    if (totalActivitiesEl) {
-      totalActivitiesEl.textContent = stats.totalActivities.toLocaleString();
+    // Update values
+    this.updateStatValue('totalActivities', stats.totalActivities.toLocaleString());
+    this.updateStatValue('totalTime', this.formatDuration(stats.totalTimeMinutes));
+    this.updateStatValue('avgDaily', this.formatDuration(stats.avgDailyMinutes));
+    this.updateStatValue('activeDays', stats.activeDays.toString());
+    this.updateStatValue('topActivity', stats.topActivity.length > 15 ? 
+      stats.topActivity.substring(0, 15) + '...' : stats.topActivity);
+    this.updateStatValue('productivity', `${stats.productivityScore}%`);
+    
+    // Update trends
+    this.updateTrend('activitiesTrend', stats.trends.activitiesChange);
+    this.updateTrend('timeTrend', stats.trends.timeChange);
+    this.updateTrend('dailyTrend', stats.trends.dailyChange);
+    this.updateTrend('daysTrend', stats.trends.daysChange);
+    this.updateTrend('topActivityTime', stats.topActivityTime, 'time');
+    this.updateTrend('productivityTrend', stats.trends.activitiesChange); // Use activities trend as proxy for productivity trend
+  }
+  
+  private updateStatValue(elementId: string, value: string): void {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.textContent = value;
     }
-
-    if (totalTimeEl) {
-      const hours = Math.floor(stats.totalTimeMinutes / 60);
-      const minutes = stats.totalTimeMinutes % 60;
-      totalTimeEl.textContent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+  }
+  
+  private updateTrend(elementId: string, change: number, type: 'percentage' | 'time' = 'percentage'): void {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    if (type === 'time') {
+      element.textContent = this.formatDuration(change);
+      element.className = 'stat-trend neutral';
+      return;
     }
-
-    if (avgDailyEl) {
-      const hours = Math.floor(stats.avgDailyMinutes / 60);
-      const minutes = stats.avgDailyMinutes % 60;
-      avgDailyEl.textContent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    
+    const prefix = change > 0 ? '+' : '';
+    element.textContent = `${prefix}${change}%`;
+    
+    if (change > 0) {
+      element.className = 'stat-trend positive';
+    } else if (change < 0) {
+      element.className = 'stat-trend negative';
+    } else {
+      element.className = 'stat-trend neutral';
     }
-
-    if (activeDaysEl) {
-      activeDaysEl.textContent = stats.activeDays.toString();
-    }
+  }
+  
+  private formatDuration(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   }
 
   private async exportData(format: 'json' | 'csv' | 'pdf'): Promise<void> {
@@ -357,7 +552,7 @@ class OptionsPage {
 
       await this.importActivities(data);
       this.showToast(`Successfully imported ${data.length} activities`);
-      await this.loadStatistics();
+      await this.loadEnhancedAnalytics();
     } catch (error) {
       console.error('Error importing data:', error);
       this.showToast('Failed to import data - please check the file format', 'error');
@@ -422,7 +617,7 @@ class OptionsPage {
 
       await this.deleteAllActivities();
       this.showToast('All data has been cleared');
-      await this.loadStatistics();
+      await this.loadEnhancedAnalytics();
     } catch (error) {
       console.error('Error clearing data:', error);
       this.showToast('Failed to clear data', 'error');
@@ -782,6 +977,420 @@ class OptionsPage {
     // For now, we'll return the HTML content which can be saved as an HTML file
     // that can be opened in a browser and printed to PDF
     return htmlContent;
+  }
+
+  private async generateAnalyticsData(): Promise<AnalyticsData> {
+    const activities = await this.getActivitiesForTimeRange();
+    
+    // Generate daily time data
+    const dailyTime = this.generateDailyTimeData(activities);
+    
+    // Generate activity distribution
+    const activityDistribution = this.generateActivityDistribution(activities);
+    
+    // Generate weekly heatmap (simplified)
+    const weeklyHeatmap = this.generateWeeklyHeatmap(activities);
+    
+    // Generate top tags
+    const topTags = this.generateTopTagsData(activities);
+    
+    return {
+      dailyTime,
+      activityDistribution,
+      weeklyHeatmap,
+      topTags
+    };
+  }
+
+  private generateDailyTimeData(activities: Activity[]): { date: string; minutes: number }[] {
+    const dailyMap = new Map<string, number>();
+    
+    activities.forEach(activity => {
+      const startTime = new Date(activity.start);
+      const endTime = activity.end ? new Date(activity.end) : new Date();
+      const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+      
+      const dateKey = `${activity.year}-${String(activity.month).padStart(2, '0')}-${String(activity.day).padStart(2, '0')}`;
+      dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + durationMinutes);
+    });
+    
+    // Fill in missing days with 0
+    const days = this.analyticsTimeRange || 30;
+    const result: { date: string; minutes: number }[] = [];
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0]!;
+      result.push({
+        date: dateKey,
+        minutes: dailyMap.get(dateKey) || 0
+      });
+    }
+    
+    return result;
+  }
+
+  private generateActivityDistribution(activities: Activity[]): { activity: string; minutes: number }[] {
+    const activityMap = new Map<string, number>();
+    
+    activities.forEach(activity => {
+      const startTime = new Date(activity.start);
+      const endTime = activity.end ? new Date(activity.end) : new Date();
+      const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+      
+      activityMap.set(activity.activity, (activityMap.get(activity.activity) || 0) + durationMinutes);
+    });
+    
+    return Array.from(activityMap.entries())
+      .map(([activity, minutes]) => ({ activity, minutes }))
+      .sort((a, b) => b.minutes - a.minutes)
+      .slice(0, 10);
+  }
+
+  private generateWeeklyHeatmap(activities: Activity[]): { week: number; day: number; minutes: number }[] {
+    // Simplified heatmap - just return last 4 weeks
+    const result: { week: number; day: number; minutes: number }[] = [];
+    const now = new Date();
+    
+    for (let week = 0; week < 4; week++) {
+      for (let day = 0; day < 7; day++) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - (week * 7 + day));
+        
+        const dayActivities = activities.filter(activity => {
+          const activityDate = new Date(activity.start);
+          return activityDate.toDateString() === date.toDateString();
+        });
+        
+        const minutes = dayActivities.reduce((sum, activity) => {
+          const startTime = new Date(activity.start);
+          const endTime = activity.end ? new Date(activity.end) : new Date();
+          return sum + Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+        }, 0);
+        
+        result.push({ week, day, minutes });
+      }
+    }
+    
+    return result;
+  }
+
+  private generateTopTagsData(activities: Activity[]): { tag: string; minutes: number }[] {
+    const tagMap = new Map<string, number>();
+    
+    activities.forEach(activity => {
+      if (!activity.tags) return;
+      
+      const startTime = new Date(activity.start);
+      const endTime = activity.end ? new Date(activity.end) : new Date();
+      const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+      
+      activity.tags.forEach(tag => {
+        tagMap.set(tag, (tagMap.get(tag) || 0) + durationMinutes);
+      });
+    });
+    
+    return Array.from(tagMap.entries())
+      .map(([tag, minutes]) => ({ tag, minutes }))
+      .sort((a, b) => b.minutes - a.minutes)
+      .slice(0, 8);
+  }
+
+  private renderCharts(analyticsData: AnalyticsData): void {
+    this.destroyExistingCharts();
+    
+    this.renderDailyTimeChart(analyticsData.dailyTime);
+    this.renderActivityPieChart(analyticsData.activityDistribution);
+    this.renderWeeklyHeatmapChart(analyticsData.weeklyHeatmap);
+    this.renderTagsBarChart(analyticsData.topTags);
+  }
+
+  private destroyExistingCharts(): void {
+    Object.values(this.charts).forEach(chart => {
+      if (chart) {
+        chart.destroy();
+      }
+    });
+    this.charts = {};
+  }
+
+  private renderDailyTimeChart(dailyData: { date: string; minutes: number }[]): void {
+    const ctx = document.getElementById('dailyTimeChart') as HTMLCanvasElement;
+    if (!ctx) return;
+
+    this.charts.dailyTime = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: dailyData.map(d => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+        datasets: [{
+          label: 'Time Tracked (hours)',
+          data: dailyData.map(d => Math.round(d.minutes / 6) / 10), // Convert to hours with 1 decimal
+          borderColor: '#ff7000',
+          backgroundColor: 'rgba(255, 112, 0, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Hours'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  private renderActivityPieChart(activityData: { activity: string; minutes: number }[]): void {
+    const ctx = document.getElementById('activityPieChart') as HTMLCanvasElement;
+    if (!ctx) return;
+
+    const colors = [
+      '#ff7000', '#e85d00', '#ffaa55', '#cc4400', '#ff8833',
+      '#b83d00', '#ff9966', '#994400', '#ffcc99', '#662200'
+    ];
+
+    this.charts.activityPie = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: activityData.map(a => a.activity.length > 20 ? a.activity.substring(0, 20) + '...' : a.activity),
+        datasets: [{
+          data: activityData.map(a => Math.round(a.minutes / 6) / 10), // Convert to hours
+          backgroundColor: colors.slice(0, activityData.length),
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 12,
+              font: {
+                size: 11
+              }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const label = context.label || '';
+                const value = context.parsed;
+                return `${label}: ${value}h`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  private renderWeeklyHeatmapChart(heatmapData: { week: number; day: number; minutes: number }[]): void {
+    const ctx = document.getElementById('weeklyHeatmapChart') as HTMLCanvasElement;
+    if (!ctx) return;
+
+    // Create a simple heatmap using bar chart
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    // Group by day of week
+    const dayTotals = new Array(7).fill(0);
+    heatmapData.forEach(data => {
+      dayTotals[data.day] += data.minutes;
+    });
+
+    this.charts.weeklyHeatmap = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: days,
+        datasets: [{
+          label: 'Time Tracked (hours)',
+          data: dayTotals.map(minutes => Math.round(minutes / 6) / 10),
+          backgroundColor: days.map((_, i) => {
+            const intensity = dayTotals[i] / Math.max(...dayTotals);
+            const opacity = Math.max(0.2, intensity);
+            return `rgba(255, 112, 0, ${opacity})`;
+          }),
+          borderColor: '#ff7000',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Hours'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  private renderTagsBarChart(tagData: { tag: string; minutes: number }[]): void {
+    const ctx = document.getElementById('tagsBarChart') as HTMLCanvasElement;
+    if (!ctx) return;
+
+    this.charts.tagsBar = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: tagData.map(t => t.tag),
+        datasets: [{
+          label: 'Time Tracked (hours)',
+          data: tagData.map(t => Math.round(t.minutes / 6) / 10),
+          backgroundColor: 'rgba(255, 112, 0, 0.8)',
+          borderColor: '#ff7000',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Hours'
+            }
+          },
+          x: {
+            ticks: {
+              maxRotation: 45
+            }
+          }
+        }
+      }
+    });
+  }
+
+  private generateProductivityInsights(stats: Statistics, _analyticsData: AnalyticsData): void {
+    const insights: ProductivityInsight[] = [];
+    
+    // Analyze consistency
+    const activeDaysRatio = stats.activeDays / (this.analyticsTimeRange || 30);
+    if (activeDaysRatio > 0.8) {
+      insights.push({
+        type: 'positive',
+        text: `Excellent consistency! You've been active on ${Math.round(activeDaysRatio * 100)}% of days.`
+      });
+    } else if (activeDaysRatio < 0.3) {
+      insights.push({
+        type: 'warning',
+        text: `Low activity consistency. Try to track time more regularly to improve insights.`
+      });
+    }
+    
+    // Analyze productivity score
+    if (stats.productivityScore >= 80) {
+      insights.push({
+        type: 'positive',
+        text: `Outstanding productivity score of ${stats.productivityScore}%! You're managing time very well.`
+      });
+    } else if (stats.productivityScore >= 60) {
+      insights.push({
+        type: 'info',
+        text: `Good productivity score of ${stats.productivityScore}%. Consider using more tags for better organization.`
+      });
+    } else {
+      insights.push({
+        type: 'warning',
+        text: `Productivity score of ${stats.productivityScore}% suggests room for improvement. Focus on consistent tracking and session lengths.`
+      });
+    }
+    
+    // Analyze session patterns
+    const avgSession = stats.totalTimeMinutes / stats.totalActivities;
+    if (avgSession < 15) {
+      insights.push({
+        type: 'info',
+        text: 'Your sessions are quite short. Consider grouping related activities for better focus.'
+      });
+    } else if (avgSession > 120) {
+      insights.push({
+        type: 'warning',
+        text: 'Your sessions are very long. Taking breaks can improve productivity and focus.'
+      });
+    } else {
+      insights.push({
+        type: 'positive',
+        text: `Great session length! Average of ${Math.round(avgSession)} minutes is ideal for focused work.`
+      });
+    }
+    
+    // Analyze trends
+    if (stats.trends.timeChange > 20) {
+      insights.push({
+        type: 'positive',
+        text: `Impressive growth! Your tracked time increased by ${stats.trends.timeChange}% compared to the previous period.`
+      });
+    } else if (stats.trends.timeChange < -20) {
+      insights.push({
+        type: 'info',
+        text: `Tracked time decreased by ${Math.abs(stats.trends.timeChange)}%. This might indicate changing priorities or schedule.`
+      });
+    }
+    
+    // Analyze top activity
+    if (stats.topActivityTime > stats.totalTimeMinutes * 0.5) {
+      insights.push({
+        type: 'info',
+        text: `"${stats.topActivity}" dominates your time (${Math.round(stats.topActivityTime / 60)}h). Consider diversifying activities.`
+      });
+    }
+    
+    // Default insight if none generated
+    if (insights.length === 0) {
+      insights.push({
+        type: 'info',
+        text: 'Keep tracking your activities to get personalized insights about your productivity patterns.'
+      });
+    }
+    
+    this.renderProductivityInsights(insights);
+  }
+
+  private renderProductivityInsights(insights: ProductivityInsight[]): void {
+    const container = document.getElementById('productivityInsights');
+    if (!container) return;
+    
+    container.innerHTML = insights.map(insight => `
+      <div class="insight-item">
+        <div class="insight-icon ${insight.type}">
+          ${insight.type === 'positive' ? '✓' : insight.type === 'warning' ? '!' : 'i'}
+        </div>
+        <span class="insight-text">${insight.text}</span>
+      </div>
+    `).join('');
   }
 }
 

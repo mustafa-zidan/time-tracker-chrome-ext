@@ -166,35 +166,101 @@
           </div>
         </section>
 
-        <!-- Statistics -->
-        <section class="settings-card">
+        <!-- Enhanced Analytics Dashboard -->
+        <section class="settings-card analytics-dashboard">
           <div class="card-header">
-            <h2>Statistics</h2>
+            <h2>Analytics Dashboard</h2>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 3v18h18"></path>
               <path d="m19 9l-5 5-4-4-3 3"></path>
             </svg>
           </div>
           <div class="card-content">
+            <!-- Time Range Selector -->
+            <div class="analytics-controls">
+              <div class="filter-group">
+                <label for="analyticsTimeRange" class="filter-label">Time Range:</label>
+                <select id="analyticsTimeRange" class="filter-select">
+                  <option value="7">Last 7 days</option>
+                  <option value="30" selected>Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                  <option value="365">Last year</option>
+                  <option value="0">All time</option>
+                </select>
+              </div>
+              <button id="refreshAnalytics" class="button primary">Refresh Analytics</button>
+            </div>
+
+            <!-- Key Metrics -->
             <div class="stats-grid">
               <div class="stat-item">
                 <div class="stat-value" id="totalActivities">-</div>
                 <div class="stat-label">Total Activities</div>
+                <div class="stat-trend" id="activitiesTrend"></div>
               </div>
               <div class="stat-item">
                 <div class="stat-value" id="totalTime">-</div>
                 <div class="stat-label">Total Time Tracked</div>
+                <div class="stat-trend" id="timeTrend"></div>
               </div>
               <div class="stat-item">
                 <div class="stat-value" id="avgDaily">-</div>
                 <div class="stat-label">Avg Daily Time</div>
+                <div class="stat-trend" id="dailyTrend"></div>
               </div>
               <div class="stat-item">
                 <div class="stat-value" id="activeDays">-</div>
                 <div class="stat-label">Active Days</div>
+                <div class="stat-trend" id="daysTrend"></div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" id="topActivity">-</div>
+                <div class="stat-label">Top Activity</div>
+                <div class="stat-trend" id="topActivityTime"></div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" id="productivity">-</div>
+                <div class="stat-label">Productivity Score</div>
+                <div class="stat-trend" id="productivityTrend"></div>
               </div>
             </div>
-            <button id="refreshStats" class="button primary">Refresh Statistics</button>
+
+            <!-- Charts Section -->
+            <div class="charts-section">
+              <!-- Daily Time Trend -->
+              <div class="chart-container">
+                <h3>Daily Time Tracking Trend</h3>
+                <canvas id="dailyTimeChart" width="400" height="200"></canvas>
+              </div>
+
+              <!-- Activity Distribution -->
+              <div class="chart-container">
+                <h3>Activity Distribution</h3>
+                <canvas id="activityPieChart" width="400" height="200"></canvas>
+              </div>
+
+              <!-- Weekly Heatmap -->
+              <div class="chart-container">
+                <h3>Weekly Activity Heatmap</h3>
+                <canvas id="weeklyHeatmapChart" width="400" height="200"></canvas>
+              </div>
+
+              <!-- Top Tags -->
+              <div class="chart-container">
+                <h3>Top Tags by Time</h3>
+                <canvas id="tagsBarChart" width="400" height="200"></canvas>
+              </div>
+            </div>
+
+            <!-- Productivity Insights -->
+            <div class="insights-section">
+              <h3>Productivity Insights</h3>
+              <div id="productivityInsights" class="insights-list">
+                <div class="insight-item loading">
+                  <span class="insight-text">Loading insights...</span>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
